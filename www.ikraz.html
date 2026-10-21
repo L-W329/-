@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23ff6b35'/><text x='50' y='68' font-size='55' font-weight='bold' text-anchor='middle' fill='white' font-family='sans-serif'>R</text></svg>">
+<title>Razrai AI Studio — 图生图 & 图生视频</title>
+<style>
+  :root {
+    --bg: #0a0a0b;
+    --surface: #141416;
+    --surface-2: #1c1c1f;
+    --border: #2a2a2e;
+    --border-light: #3a3a3f;
+    --text: #e4e4e7;
+    --text-dim: #9ca3af;
+    --text-muted: #6b7280;
+    --accent: #ff6b35;
+    --accent-hover: #ff7f4d;
+    --accent-dim: rgba(255, 107, 53, 0.12);
+    --success: #34d399;
+    --error: #f87171;
+    --warning: #fbbf24;
+    --radius: 8px;
+    --mono: 'SF Mono', 'Cascadia Code', 'Fira Code', Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+  /* ===== 顶部导航 ===== */
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    height: 56px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: -0.02em;
+  }
+  .logo-mark {
+    width: 24px;
+    height: 24px;
+    background: var(--accent);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 800;
+  }
+  .logo-sub { color: var(--text-muted); font-weight: 400; font-size: 13px; }
+  .topbar-right { display: flex; align-items: center; gap: 12px; }
+  .key-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--text-dim);
+    font-family: var(--mono);
+  }
+  .key-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--text-muted);
+  }
+  .key-dot.set { background: var(--success); }
+  /* ===== 主布局 ===== */
+  .main {
+    display: grid;
+    grid-template-columns: 380px 1fr;
+    gap: 0;
+    min-height: calc(100vh - 56px - 200px);
+  }
+  .panel-left {
+    border-right: 1px solid var(--border);
+    padding: 20px;
+    overflow-y: auto;
+  }
+  .panel-right {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+  }
+  /* ===== Tab 切换 ===== */
+  .tabs {
+    display: flex;
+    background: var(--surface-2);
+    border-radius: var(--radius);
+    padding: 4px;
+    margin-bottom: 20px;
+  }
+  .tab {
+    flex: 1;
+    text-align: center;
+    padding: 8px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--text-dim);
+    transition: all 0.15s;
+    border: none;
+    background: transparent;
+    font-family: inherit;
+  }
+  .tab.active {
+    background: var(--surface);
+    color: var(--text);
+    font-weight: 600;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  }
+  /* ===== 表单元素 ===== */
+  .field { margin-bottom: 16px; }
+  .field label {
+    display: block;
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+    font-weight: 500;
+  }
+  .field input[type="text"],
+  .field input[type="password"],
+  .field textarea,
+  .field select {
+    width: 100%;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 9px 12px;
+    color: var(--text);
+    font-size: 14px;
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .field input:focus, .field textarea:focus, .field select:focus {
+    border-color: var(--accent);
+  }
+  .field textarea {
+    min-height: 90px;
+    resize: vertical;
+    line-height: 1.5;
+  }
+  .field-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  /* ===== 上传区 ===== */
+  .upload-zone {
+    border: 1.5px dashed var(--border-light);
+    border-radius: var(--radius);
+    padding: 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.15s;
+    background: var(--surface-2);
+  }
+  .upload-zone:hover, .upload-zone.dragover {
+    border-color: var(--accent);
+    background: var(--accent-dim);
+  }
+  .upload-zone.has-image {
+    padding: 0;
+    border-style: solid;
+    overflow: hidden;
+    position: relative;
+  }
+  .upload-zone img.preview {
+    width: 100%;
+    max-height: 200px;
+    object-fit: contain;
+    display: block;
+    background: var(--bg);
+  }
+  .upload-hint {
+    color: var(--text-muted);
+    font-size: 12px;
+    margin-top: 4px;
+  }
+  .upload-icon {
+    font-size: 24px;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+  }
+  /* ===== 按钮 ===== */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px 18px;
+    border-radius: 6px;
+    border: none;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: inherit;
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+    width: 100%;
+  }
+  .btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+  .btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  .btn-secondary {
+    background: var(--surface-2);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn-secondary:hover { border-color: var(--border-light); }
+  .btn-sm { padding: 6px 12px; font-size: 12px; }
+  /* ===== 结果区 ===== */
+  .result-area {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .result-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .result-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-dim);
+  }
+  .result-body {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    min-height: 320px;
+    background:
+      linear-gradient(45deg, #1a1a1c 25%, transparent 25%),
+      linear-gradient(-45deg, #1a1a1c 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, #1a1a1c 75%),
+      linear-gradient(-45deg, transparent 75%, #1a1a1c 75%);
+    background-size: 20px 20px;
+    background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+  }
+  .result-body img, .result-body video {
+    max-width: 100%;
+    max-height: 480px;
+    border-radius: 6px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  }
+  .result-empty {
+    text-align: center;
+    color: var(--text-muted);
+  }
+  .result-empty .icon { font-size: 40px; margin-bottom: 12px; opacity: 0.4; }
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-family: var(--mono);
+    font-weight: 500;
+  }
+  .status-pending { background: rgba(251, 191, 36, 0.15); color: var(--warning); }
+  .status-running { background: rgba(59, 130, 246, 0.15); color: #60a5fa; }
+  .status-success { background: rgba(52, 211, 153, 0.15); color: var(--success); }
+  .status-fail { background: rgba(248, 113, 113, 0.15); color: var(--error); }
+  .spinner {
+    width: 14px; height: 14px;
+    border: 2px solid currentColor;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    display: inline-block;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  /* ===== 日志面板 ===== */
+  .log-panel {
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+    max-height: 200px;
+    display: flex;
+    flex-direction: column;
+  }
+  .log-header {
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+  }
+  .log-header:hover { background: var(--surface-2); }
+  .log-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-dim);
+    font-family: var(--mono);
+  }
+  .log-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px 16px;
+    font-family: var(--mono);
+    font-size: 11px;
+    line-height: 1.7;
+  }
+  .log-line { white-space: pre-wrap; word-break: break-all; }
+  .log-time { color: var(--text-muted); }
+  .log-info { color: var(--text-dim); }
+  .log-ok { color: var(--success); }
+  .log-err { color: var(--error); }
+  .log-warn { color: var(--warning); }
+  .log-panel.collapsed .log-body { display: none; }
+  /* ===== Modal ===== */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+  .modal-overlay.show { display: flex; }
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    width: 90%;
+    max-width: 440px;
+  }
+  .modal h3 { margin-bottom: 16px; font-size: 16px; }
+  .modal .hint {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 8px;
+    line-height: 1.5;
+  }
+  .modal-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+    justify-content: flex-end;
+  }
+  /* ===== Toast ===== */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--surface-2);
+    border: 1px solid var(--border-light);
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 13px;
+    z-index: 2000;
+    opacity: 0;
+    transition: opacity 0.2s;
+    pointer-events: none;
+  }
+  .toast.show { opacity: 1; }
+  /* ===== 响应式 ===== */
+  @media (max-width: 860px) {
+    .main { grid-template-columns: 1fr; }
+    .panel-left { border-right: none; border-bottom: 1px solid var(--border); }
+    .field input[type="text"],
+    .field input[type="password"],
+    .field textarea,
+    .field select {
+      font-size: 16px;
+    }
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== 顶部导航 ===== -->
+<header class="topbar">
+  <div class="logo">
+    <div class="logo-mark">R</div>
+    <span>Razrai AI Studio</span>
+    <span class="logo-sub">/ 图生图 &amp; 图生视频</span>
+  </div>
+  <div class="topbar-right">
+    <div class="key-status">
+      <div class="key-dot" id="keyDot"></div>
+      <span id="keyLabel">未配置密钥</span>
+    </div>
+    <button class="btn btn-secondary btn-sm" onclick="openKeyModal()">配置 API 密钥</button>
+  </div>
+</header>
+
+<!-- ===== 主区域 ===== -->
+<div class="main">
+  <!-- 左侧控制面板 -->
+  <div class="panel-left">
+    <div class="tabs">
+      <button class="tab active" data-mode="image" onclick="switchMode('image')">图生图</button>
+      <button class="tab" data-mode="video" onclick="switchMode('video')">图生视频</button>
+    </div>
+
+    <!-- 上传图片 -->
+    <div class="field">
+      <label>输入图片</label>
+      <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
+        <div class="upload-icon">+</div>
+        <div>点击或拖拽上传图片</div>
+        <div class="upload-hint">PNG / JPG，作为图生图/图生视频的输入帧</div>
+      </div>
+      <input type="file" id="fileInput" accept="image/*" style="display:none">
+    </div>
+
+    <!-- Prompt -->
+    <div class="field">
+      <label>提示词 (Prompt)</label>
+      <textarea id="promptInput" placeholder="描述你想要的结果，例如：将这张图转为赛博朋克风格..."></textarea>
+    </div>
+
+    <!-- 图生图参数 -->
+    <div id="imageParams">
+      <div class="field-row">
+        <div class="field">
+          <label>模型</label>
+          <select id="imgModel">
+            <option value="dall-e-3">dall-e-3</option>
+            <option value="stable-diffusion-xl">stable-diffusion-xl</option>
+            <option value="flux">flux</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>输出尺寸</label>
+          <select id="imgSize">
+            <option value="1024x1024">1024 × 1024</option>
+            <option value="1792x1024">1792 × 1024</option>
+            <option value="1024x1792">1024 × 1792</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- 图生视频参数 -->
+    <div id="videoParams" style="display:none">
+      <div class="field-row">
+        <div class="field">
+          <label>模型</label>
+          <select id="vidModel">
+            <option value="veo-2">veo-2</option>
+            <option value="kling">kling</option>
+            <option value="runway">runway-gen-3</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>时长 (秒)</label>
+          <select id="vidDuration">
+            <option value="5">5s</option>
+            <option value="10">10s</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label>运动幅度</label>
+        <select id="vidMotion">
+          <option value="low">低（轻微动效）</option>
+          <option value="medium" selected>中</option>
+          <option value="high">高（剧烈运动）</option>
+        </select>
+      </div>
+    </div>
+
+    <button class="btn btn-primary" id="submitBtn" onclick="handleSubmit()">
+      开始生成
+    </button>
+  </div>
+
+  <!-- 右侧结果区 -->
+  <div class="panel-right">
+    <div class="result-area">
+      <div class="result-header">
+        <span class="result-title" id="resultTitle">结果预览</span>
+        <div id="resultActions" style="display:none">
+          <button class="btn btn-secondary btn-sm" onclick="downloadResult()">下载</button>
+        </div>
+      </div>
+      <div class="result-body" id="resultBody">
+        <div class="result-empty">
+          <div class="icon">[ ]</div>
+          <div>上传图片并输入提示词，点击「开始生成」</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 日志面板 ===== -->
+<div class="log-panel" id="logPanel">
+  <div class="log-header" onclick="toggleLog()">
+    <span class="log-title">▼ 运行日志</span>
+    <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); clearLog()">清空</button>
+  </div>
+  <div class="log-body" id="logBody"></div>
+</div>
+
+<!-- ===== API Key Modal ===== -->
+<div class="modal-overlay" id="keyModal">
+  <div class="modal">
+    <h3>配置 Razrai API 密钥</h3>
+    <div class="field">
+      <label>API Key</label>
+      <input type="password" id="apiKeyInput" placeholder="razrai_sk-...">
+    </div>
+    <div class="field">
+      <label>API Base URL</label>
+      <input type="text" id="apiBaseInput" value="https://razrai.com/v1">
+    </div>
+    <div class="hint">
+      密钥仅保存在你浏览器的 localStorage 中，不会上传到任何服务器。
+      由于是纯静态页面，请求会直接从浏览器发往 Razrai，可能遇到 CORS 限制——如遇跨域错误，需通过支持 CORS 的代理或浏览器插件调用。
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeKeyModal()">取消</button>
+      <button class="btn btn-primary" style="width:auto" onclick="saveKey()">保存</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<input type="hidden" id="inputImageBase64">
+
+<script>
+// ===== 状态 =====
+let mode = 'image';
+let pollTimer = null;
+
+// ===== 初始化 =====
+function init() {
+  const key = localStorage.getItem('razrai_api_key');
+  const base = localStorage.getItem('razrai_api_base');
+  if (key) document.getElementById('apiKeyInput').value = key;
+  if (base) document.getElementById('apiBaseInput').value = base;
+  updateKeyStatus();
+
+  // 拖拽上传
+  const zone = document.getElementById('uploadZone');
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault();
+    zone.classList.remove('dragover');
+    if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+  });
+  document.getElementById('fileInput').addEventListener('change', e => {
+    if (e.target.files[0]) handleFile(e.target.files[0]);
+  });
+
+  log('info', 'Razrai AI Studio 已就绪');
+  log('info', '请先在右上角配置 API 密钥');
+}
+
+function updateKeyStatus() {
+  const key = localStorage.getItem('razrai_api_key');
+  const dot = document.getElementById('keyDot');
+  const label = document.getElementById('keyLabel');
+  if (key) {
+    dot.classList.add('set');
+    label.textContent = '已配置 (' + key.slice(0, 12) + '...)';
+  } else {
+    dot.classList.remove('set');
+    label.textContent = '未配置密钥';
+  }
+}
+
+// ===== Modal =====
+function openKeyModal() {
+  document.getElementById('keyModal').classList.add('show');
+}
+function closeKeyModal() {
+  document.getElementById('keyModal').classList.remove('show');
+}
+function saveKey() {
+  const key = document.getElementById('apiKeyInput').value.trim();
+  const base = document.getElementById('apiBaseInput').value.trim();
+  localStorage.setItem('razrai_api_key', key);
+  localStorage.setItem('razrai_api_base', base || 'https://razrai.com/v1');
+  updateKeyStatus();
+  closeKeyModal();
+  toast('API 密钥已保存');
+  log('ok', 'API 密钥已配置');
+}
+
+// ===== 上传图片 =====
+function handleFile(file) {
+  if (!file.type.startsWith('image/')) {
+    toast('请上传图片文件');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = e => {
+    const base64 = e.target.result;
+    document.getElementById('inputImageBase64').value = base64;
+    const zone = document.getElementById('uploadZone');
+    zone.classList.add('has-image');
+    zone.innerHTML = '<img class="preview" src="' + base64 + '">';
+    log('info', '图片已加载: ' + file.name + ' (' + Math.round(file.size/1024) + 'KB)');
+  };
+  reader.readAsDataURL(file);
+}
+
+// ===== 切换模式 =====
+function switchMode(m) {
+  mode = m;
+  document.querySelectorAll('.tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.mode === m);
+  });
+  document.getElementById('imageParams').style.display = m === 'image' ? '' : 'none';
+  document.getElementById('videoParams').style.display = m === 'video' ? '' : 'none';
+  document.getElementById('resultTitle').textContent = m === 'image' ? '生成图片' : '生成视频';
+}
+
+// ===== 日志 =====
+function log(type, msg) {
+  const body = document.getElementById('logBody');
+  const time = new Date().toLocaleTimeString('zh-CN', { hour12: false });
+  const colors = { info: 'log-info', ok: 'log-ok', err: 'log-err', warn: 'log-warn' };
+  body.innerHTML += '<div class="log-line"><span class="log-time">[' + time + ']</span> <span class="' + (colors[type]||'log-info') + '">' + escapeHtml(msg) + '</span></div>';
+  body.scrollTop = body.scrollHeight;
+}
+function clearLog() {
+  document.getElementById('logBody').innerHTML = '';
+}
+function toggleLog() {
+  document.getElementById('logPanel').classList.toggle('collapsed');
+}
+function escapeHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ===== Toast =====
+let toastTimer;
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+// ===== 提交生成 =====
+async function handleSubmit() {
+  const key = localStorage.getItem('razrai_api_key');
+  const base = localStorage.getItem('razrai_api_base') || 'https://razrai.com/v1';
+  const inputImg = document.getElementById('inputImageBase64').value;
+  const prompt = document.getElementById('promptInput').value.trim();
+
+  if (!key) { toast('请先配置 API 密钥'); openKeyModal(); return; }
+  if (!inputImg) { toast('请先上传输入图片'); return; }
+  if (!prompt) { toast('请输入提示词'); return; }
+
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> 提交中...';
+
+  if (mode === 'image') {
+    await generateImage(base, key, inputImg, prompt);
+  } else {
+    await generateVideo(base, key, inputImg, prompt);
+  }
+}
+
+// ===== 图生图 =====
+async function generateImage(base, key, inputImg, prompt) {
+  const model = document.getElementById('imgModel').value;
+  const size = document.getElementById('imgSize').value;
+
+  setResultLoading('正在生成图片...');
+  log('info', '── 图生图请求 ──');
+  log('info', 'POST ' + base + '/images/generations');
+  log('info', 'model=' + model + ', size=' + size);
+
+  try {
+    const res = await fetch(base + '/images/generations', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + key,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: model,
+        prompt: prompt,
+        image: inputImg,
+        size: size,
+        n: 1
+      })
+    });
+
+    const data = await res.json();
+    log('info', 'HTTP ' + res.status);
+
+    if (!res.ok) {
+      log('err', '错误: ' + JSON.stringify(data));
+      setResultError('请求失败: ' + (data.error?.message || res.statusText));
+      return;
+    }
+
+    const url = data.data?.[0]?.url || data.data?.[0]?.b64_json;
+    if (!url) {
+      log('err', '响应中未找到图片 URL: ' + JSON.stringify(data).slice(0, 500));
+      setResultError('响应格式异常，未找到图片');
+      return;
+    }
+
+    const finalUrl = url.startsWith('data:') ? url : url;
+    log('ok', '图片生成成功');
+    setResultImage(finalUrl);
+  } catch (e) {
+    log('err', '网络错误: ' + e.message);
+    setResultError('网络请求失败（可能是 CORS 跨域限制）: ' + e.message);
+  } finally {
+    resetBtn();
+  }
+}
+
+// ===== 图生视频 =====
+async function generateVideo(base, key, inputImg, prompt) {
+  const model = document.getElementById('vidModel').value;
+  const duration = parseInt(document.getElementById('vidDuration').value);
+  const motion = document.getElementById('vidMotion').value;
+
+  setResultLoading('正在创建视频任务...');
+  log('info', '── 图生视频请求 ──');
+  log('info', 'POST ' + base + '/videos/generations');
+  log('info', 'model=' + model + ', duration=' + duration + 's, motion=' + motion);
+
+  let taskId;
+  try {
+    const res = await fetch(base + '/videos/generations', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + key,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: model,
+        prompt: prompt,
+        image: inputImg,
+        duration: duration,
+        motion: motion
+      })
+    });
+
+    const data = await res.json();
+    log('info', 'HTTP ' + res.status);
+
+    if (!res.ok) {
+      log('err', '错误: ' + JSON.stringify(data));
+      setResultError('创建任务失败: ' + (data.error?.message || res.statusText));
+      resetBtn();
+      return;
+    }
+
+    taskId = data.id || data.task_id || data.data?.id;
+    if (!taskId) {
+      log('err', '未获取到任务 ID: ' + JSON.stringify(data).slice(0, 500));
+      setResultError('响应中未找到任务 ID');
+      resetBtn();
+      return;
+    }
+
+    log('ok', '任务已创建: ' + taskId);
+    startPolling(base, key, taskId);
+  } catch (e) {
+    log('err', '网络错误: ' + e.message);
+    setResultError('网络请求失败（可能是 CORS 跨域限制）: ' + e.message);
+    resetBtn();
+  }
+}
+
+async function startPolling(base, key, taskId) {
+  let attempts = 0;
+  const maxAttempts = 120; // 最多轮询 10 分钟
+  setResultLoading('视频渲染中... (任务: ' + taskId + ')');
+
+  if (pollTimer) clearInterval(pollTimer);
+
+  pollTimer = setInterval(async () => {
+    attempts++;
+    if (attempts > maxAttempts) {
+      clearInterval(pollTimer);
+      pollTimer = null;
+      resetBtn();
+      setResultError('轮询超时（10分钟），任务可能仍在后台运行');
+      log('warn', '轮询超时');
+      return;
+    }
+
+    try {
+      const res = await fetch(base + '/videos/tasks/' + taskId, {
+        headers: { 'Authorization': 'Bearer ' + key }
+      });
+      const data = await res.json();
+      const status = data.status || data.state || 'unknown';
+      const progress = data.progress !== undefined ? ' (' + data.progress + '%)' : '';
+
+      if (attempts % 4 === 1) { // 每 ~10 秒打一条日志
+        log('info', '轮询 #' + attempts + ' 状态: ' + status + progress);
+      }
+
+      if (status === 'succeeded' || status === 'success' || status === 'completed') {
+        clearInterval(pollTimer);
+        pollTimer = null;
+        const url = data.video_url || data.data?.[0]?.url || data.output?.video_url;
+        if (url) {
+          log('ok', '视频生成完成: ' + url);
+          setResultVideo(url);
+        } else {
+          log('err', '任务完成但未找到视频 URL: ' + JSON.stringify(data).slice(0, 500));
+          setResultError('任务完成但未找到视频地址');
+        }
+        resetBtn();
+      } else if (status === 'failed' || status === 'error') {
+        clearInterval(pollTimer);
+        pollTimer = null;
+        log('err', '视频任务失败: ' + (data.error?.message || JSON.stringify(data).slice(0, 300)));
+        setResultError('视频生成失败');
+        resetBtn();
+      }
+    } catch (e) {
+      log('err', '轮询请求错误: ' + e.message);
+    }
+  }, 5000);
+}
+
+// ===== 结果展示 =====
+function setResultLoading(text) {
+  document.getElementById('resultTitle').innerHTML = '<span class="status-badge status-running"><span class="spinner"></span> ' + escapeHtml(text) + '</span>';
+  document.getElementById('resultActions').style.display = 'none';
+  document.getElementById('resultBody').innerHTML = '<div class="result-empty"><div class="spinner" style="width:28px;height:28px"></div><div style="margin-top:12px">' + escapeHtml(text) + '</div></div>';
+}
+function setResultImage(url) {
+  document.getElementById('resultTitle').innerHTML = '<span class="status-badge status-success">生成完成</span>';
+  document.getElementById('resultActions').style.display = '';
+  document.getElementById('resultBody').innerHTML = '<img src="' + url + '" alt="result">';
+  window._lastResultUrl = url;
+  window._lastResultType = 'image';
+}
+function setResultVideo(url) {
+  document.getElementById('resultTitle').innerHTML = '<span class="status-badge status-success">渲染完成</span>';
+  document.getElementById('resultActions').style.display = '';
+  document.getElementById('resultBody').innerHTML = '<video src="' + url + '" controls autoplay loop></video>';
+  window._lastResultUrl = url;
+  window._lastResultType = 'video';
+}
+function setResultError(msg) {
+  document.getElementById('resultTitle').innerHTML = '<span class="status-badge status-fail">失败</span>';
+  document.getElementById('resultActions').style.display = 'none';
+  document.getElementById('resultBody').innerHTML = '<div class="result-empty"><div style="color:var(--error)">' + escapeHtml(msg) + '</div></div>';
+}
+function resetBtn() {
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = false;
+  btn.textContent = '开始生成';
+}
+function downloadResult() {
+  const url = window._lastResultUrl;
+  if (!url) return;
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = window._lastResultType === 'video' ? 'razrai-output.mp4' : 'razrai-output.png';
+  a.target = '_blank';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  toast('已开始下载');
+}
+
+init();
+</script>
+</body>
+</html>
